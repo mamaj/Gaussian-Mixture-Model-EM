@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import multivariate_normal as mnorm
-
+from scipy.special import logsumexp
 
 def plot_ellipse(mu, cov, pi, ax, **kwargs):
     t = np.linspace(0, 2*np.pi, 100)
@@ -31,7 +31,7 @@ mu = np.array([
     [1, 1]
     ])
 cov = np.array([
-    np.eye(2) * 3,
+    np.diag([2, 5]),
     np.eye(2) * 1
     ])
 pi = np.array([1, 2])
@@ -65,7 +65,7 @@ for s in cov_hat:
     np.fill_diagonal(s, np.random.uniform(size=(2,)))
 el = []
 
-## Collapse one component
+# Collapse one component
 # pi_hat[-1] = 0.01
 # pi_hat /= pi_hat.sum()
 # mu_hat[-1] = x[0]
@@ -77,20 +77,21 @@ niter = 100
 for it in range(niter):
 
     # E step
-    resp = np.zeros((n, khat))
+    log_joint = np.zeros((n, khat))
     for i, (m, s, p) in enumerate(zip(mu_hat, cov_hat, pi_hat)):
-        resp[:, i] = mnorm.pdf(x, m, s) * p
-    nll = - np.log(resp.sum(1)).mean()
-    resp = resp / resp.sum(1, keepdims=True)
+        log_joint[:, i] = mnorm.logpdf(x, m, s) +  np.log(p)
+    log_marginal = logsumexp(log_joint, axis=1, keepdims=True) 
+    nll =  - log_marginal.mean()
+    log_post = log_joint - log_marginal
+    comp_resp = logsumexp(log_post, axis=0)
 
     update_plot()
 
     # M step
     for i in range(khat):
-        sum_resp = np.sum(resp[:, i])
-        mu_hat[i, :] = resp[:, i] @ x / sum_resp
-        cov_hat[i, :] =  (x - mu_hat[i]).T @ np.diag(resp[:, i]) @ (x - mu_hat[i]) / sum_resp
-        pi_hat[i] =  np.mean(resp[:, i])
+        mu_hat[i, :] = np.exp(log_post[:, i] - comp_resp[i]) @ x
+        cov_hat[i, :] =  (x - mu_hat[i]).T @ np.diag(np.exp(log_post[:, i] - comp_resp[i])) @ (x - mu_hat[i])
+        pi_hat[i] =  np.mean(np.exp(log_post[:, i]))
 
 print(pi_hat, pi)
 plt.show(block=True)
