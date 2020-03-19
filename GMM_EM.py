@@ -2,30 +2,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import multivariate_normal as mnorm
 from scipy.special import logsumexp
-
-def plot_ellipse(mu, cov, pi, ax, **kwargs):
-    t = np.linspace(0, 2*np.pi, 100)
-    l, V = np.linalg.eigh(cov)
-    xbar = np.zeros((2, t.size))
-    xbar[0, :] = l[0] * np.cos(t) * pi 
-    xbar[1, :] = l[1] * np.sin(t) * pi
-    x = V @ xbar + mu.reshape([-1,1])
-    return ax.plot(*x, **kwargs)[0]
+from utils import PlotGmm, generate_data
 
 
-def update_plot():
-    for e in el:
-        e.remove()
-    el.clear()
-    for m, s, p in zip(mu_hat, cov_hat, pi_hat):
-        el.append(plot_ellipse(m, s, p, ax, color='g', ls='--'))
-    ax.set_title(f'{it} - NLL: {nll:.6f}')
-    plt.pause(0.001)
-    print(f'{it + 1}: {nll:.8f}')
-
-
-## Parameters
-n = 1000
+# Data Generating Parameters
+n=1000
 mu = np.array([
     [-2, -2], 
     [1, 1]
@@ -36,24 +17,13 @@ cov = np.array([
     ])
 pi = np.array([1, 2])
 pi = pi / pi.sum()
-k = pi.shape[0]
 
 ## Generate Data
-ncomps = np.random.multinomial(n, pi)
-z = [[i] * ncomp for i, ncomp in enumerate(ncomps)]
-z = np.hstack(z)
-x = []
-for ncomp, m, s in zip(ncomps, mu, cov):
-    x.append(np.random.multivariate_normal(m, s, size=ncomp))
-x = np.vstack(x)
+np.random.seed(1)
+x, z = generate_data(mu, cov, pi, n)
 
-fig, ax = plt.subplots(figsize=(10, 10))
-ax.scatter(*x.T, s=4, c=np.array(['b', 'r'])[z])
-for m, s, p, c in zip(mu, cov, pi, ['b', 'r']):
-    plot_ellipse(m, s, p, ax, color=c)
-plt.ion()
-plt.show()
-
+plot_gmm = PlotGmm()
+plot_gmm.plot_data(x, z, mu, cov, pi)
 
 ## Initial Parameters
 khat = 2
@@ -63,7 +33,6 @@ mu_hat = np.random.normal(size=(khat,2))
 cov_hat = np.zeros((khat, 2, 2))
 for s in cov_hat:
     np.fill_diagonal(s, np.random.uniform(size=(2,)))
-el = []
 
 # Collapse one component
 # pi_hat[-1] = 0.01
@@ -85,7 +54,7 @@ for it in range(niter):
     log_post = log_joint - log_marginal
     comp_resp = logsumexp(log_post, axis=0)
 
-    update_plot()
+    plot_gmm.update_plot(mu_hat, cov_hat, pi_hat, it, nll)
 
     # M step
     for i in range(khat):
