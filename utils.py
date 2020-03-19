@@ -46,14 +46,43 @@ class PlotGmm:
         plt.pause(0.001)
 
 
+class DataGenerator:
+    def __init__(self, n=2000, mu=None, cov=None, pi=[1., 2.]):
+        self.n = n
+        
+        if mu is None:
+            self.mu = np.array(
+                [
+                    [-2., -2.],
+                    [1., 1.]
+                ], 
+                dtype=np.float32
+            )
+        else:
+            self.mu = np.array(mu)
 
-def generate_data(mu, cov, pi, n=1000, dtype=np.float32):
-    ncomps = np.random.multinomial(n, pi)
-    z = [[i] * ncomp for i, ncomp in enumerate(ncomps)]
-    z = np.hstack(z)
-    x = []
-    for ncomp, m, s in zip(ncomps, mu, cov):
-        x.append(np.random.multivariate_normal(m, s, size=ncomp))
-    x = np.vstack(x)
-    return x.astype(dtype), z.astype(np.int)
+        if cov is None:
+            self.cov = np.array(
+                [
+                    np.diag([2., 5.]),
+                    np.eye(2) * 1.
+                ],
+                dtype=np.float32
+            )
+        else:
+            self.cov = np.array(cov)
+
+        pi = np.array(pi)
+        self.pi = pi / pi.sum()
+
+    def generate_data(self, dtype=np.float32, seed=1):
+        rng = np.random.RandomState(seed=seed)
+        ncomps = rng.multinomial(self.n, self.pi)
+        z = [[i] * ncomp for i, ncomp in enumerate(ncomps)]
+        z = np.hstack(z)
+        x = []
+        for ncomp, m, s in zip(ncomps, self.mu, self.cov):
+            x.append(rng.multivariate_normal(m, s, size=ncomp))
+        x = np.vstack(x)
+        return x.astype(dtype), z.astype(np.int)
 

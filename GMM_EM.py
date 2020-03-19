@@ -2,28 +2,16 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import multivariate_normal as mnorm
 from scipy.special import logsumexp
-from utils import PlotGmm, generate_data
-
-
-# Data Generating Parameters
-n=1000
-mu = np.array([
-    [-2, -2], 
-    [1, 1]
-    ])
-cov = np.array([
-    np.diag([2, 5]),
-    np.eye(2) * 1
-    ])
-pi = np.array([1, 2])
-pi = pi / pi.sum()
+from utils import PlotGmm, DataGenerator
 
 ## Generate Data
-np.random.seed(1)
-x, z = generate_data(mu, cov, pi, n)
+n=1000
+dg = DataGenerator(n)
+x, z = dg.generate_data()
 
+## Plot GMM
 plot_gmm = PlotGmm()
-plot_gmm.plot_data(x, z, mu, cov, pi)
+plot_gmm.plot_data(x, z, dg.mu, dg.cov, dg.pi)
 
 ## Initial Parameters
 khat = 2
